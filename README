@@ -1,14 +1,4 @@
-SERBOI FLOREA-DAN 335CB
-
-As vrea sa mentionez ca checker-ul dat mai are unele probleme.
-De exemplu, daca il folosesc pe WSL pe Windows se opreste la paralelizare(apuca 
-sa ruleze ok testele), dand ValueError. Pe masina virtuala de Linux nu am 
-intampinat problema aceasta.
-In schimb, pe masina virtuala de Linux uneori nu mi-a apucat sa verifice 
-testele mici, a dat timeout. Folosind WSL pe Windows nu am mai intampinat 
-problema aceasta decat destul de rar.
-
-Tema implementeaza toate functionalitatile cerute in cerinta. Avem 5 noduri 
+Tema implementeaza un procesator de text distribuit. Avem 5 noduri 
 MPI. 
 Un nod master ruleaza 4 fire de executie pthreads, pentru a procesa fisierul de 
 intrare in paralel si pentru a comunica cu workerii in paralel (cate un fir de 
