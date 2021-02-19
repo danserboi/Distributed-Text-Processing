@@ -1,0 +1,111 @@
+SERBOI FLOREA-DAN 335CB
+
+As vrea sa mentionez ca checker-ul dat mai are unele probleme.
+De exemplu, daca il folosesc pe WSL pe Windows se opreste la paralelizare(apuca 
+sa ruleze ok testele), dand ValueError. Pe masina virtuala de Linux nu am 
+intampinat problema aceasta.
+In schimb, pe masina virtuala de Linux uneori nu mi-a apucat sa verifice 
+testele mici, a dat timeout. Folosind WSL pe Windows nu am mai intampinat 
+problema aceasta decat destul de rar.
+
+Tema implementeaza toate functionalitatile cerute in cerinta. Avem 5 noduri 
+MPI. 
+Un nod master ruleaza 4 fire de executie pthreads, pentru a procesa fisierul de 
+intrare in paralel si pentru a comunica cu workerii in paralel (cate un fir de 
+executie per worker). In final, acesta scrie rezultatul procesarii in fisierul 
+de iesire.
+Celelalte noduri, de tip worker, se ocupa de procesarea paragrafelor apartinand 
+unui topic anume. Workerii folosesc P fire de executie, unde P este numarul de 
+fire de executie disponibile pe sistemul pe care ruleaza nodul. Din cele P fire 
+de executie, un fir de executie se ocupa de receptarea datelor de la master. 
+Celelalte P-1 fire de executie proceseaza datele primite. Paragrafele sunt 
+impartite in calupuri 20 de linii care vor fi repartizate cate unui thread in 
+ordine crescatoare a ID-ului lor. Daca numarul de linii al paragrafului este 
+mai mare decat 20 *(P-1), procesul de repartizare se reia in aceeasi ordine.
+
+Tema scaleaza. Procesorul calculatorului meu are 4 nuclee fizice. Comparativ cu 
+timpul rularii seriale, pe fisierele mai mari am obtinut urmatorii timpi pe 
+masina virtuala de Linux:
+		- pentru input4.txt: 5.17s vs 17.70s;
+		- pentru input5.txt: 8.58s vs 25.60s.
+
+Tema contine fisierele header utils.h, glist.h, master.h, worker.h, fisierele 
+sursa main.c, glist.c, master.c, worker.c si un Makefile cu reguli de build si 
+clean.
+
+Fisierele header glist.h, master.h, worker.h contin declararile unor functii si 
+variabile implementate/folosite in fisierul sursa .c cu acelasi nume. Mai 
+special este fisierul header utils.h care include librariile si macro-urile 
+folosite in tema.  glist.h contine o structura de date de tip lista dublu 
+inlantuita.
+
+Voi lua pe rand fisierele sursa si functiile pe care le implementeaza:
+	- main.c contine initializarile anumitor variabile globale, primele 
+folosite in master, urmatoarele - in workeri si functiile create_threads si 
+main:
+		- variabile:
+			- in_file: denumirea fisierului de intrare;
+			- out_file: denumirea fisierului de iesire;
+			- proc_paras: retine, pentru fiecare topic, cate o 
+lista cu paragrafele procesate;
+			- P: numarul de fire de executie disponibile pe 
+sistemul pe care ruleaza nodul;
+			- barrier: bariera pentru a sincroniza thread-ul care 
+primeste paragraful de la master si pe care-l trimite procesat cu celelalte P-1 
+thread-uri care proceseaza liniile repartizate lor;
+			- recv_para_length, recv_para, recv_para_lines, 
+lines_beg: informatiile legate de paragraful primit: lungimea, continutul, 
+numarul de linii, pozitiile in paragraf la care incep liniile;
+			- proc_lines: in cazul topicului HORROR, liniile sunt 
+calculate in alta zona de memorie, astfel aici sunt retinute linile procesate. 
+Pentru celelalte topic-uri, liniile sunt calculate direct in zona paragrafului 
+procesat care va fi trimis catre MASTER.
+			- proc_para: paragraful procesat;
+			- proc_ended: variabila marcheaza ca nu mai exista 
+paragrafe de procesat pentru worker;
+		- functii:
+			- create_threads: creeaza un anumit numar de thread-uri 
+care realizeaza o functie data si pentru care se asteapta terminarea lor 
+folosind join;
+			- main: se calculeaza numarul de fire de executie 
+disponibile pe sistem, se initiaza comunicarea MPI, se calculeaza numarul de 
+task-uri MPI si rank-ul procesului, se calculeaza fisierele de intrare si 
+iesire, apoi in functie de nod, pentru fiecare cream numarul de thread-uri 
+dorit care vor efectua operatiile caracteristice lor.
+	- glist.c contine urmatoarele functii pentru lucrul cu liste:
+		- cons: insereaza la sfarsitul listei un element;
+		- del: sterge primul element(si dezaloca memoria);
+		- free_list: elibereaza memoria alocata unei liste de elemente.
+	- worker.c contine urmatoarele functii:
+		- is_letter: verifica daca caracterul este o litera;
+		- is_consonant: verifica daca caracterul este o consoana;
+		- lowercase: returneaza minuscula unei litere din alfabet;
+		- uppercase: returneaza majuscula unei litere din alfabet;
+		- paras_receiving: se ocupa de receptionarea paragrafelor 
+apartinand unui topic si trimiterea lor procesate inapoi catre MASTER;
+		- process_horror_line, process_comedy_line, 
+process_fantasy_line, process_scifi_line proceseaza o linie dintr-un paragraf 
+in modul specific topicului;
+		- process_lines: prelucreaza liniile din paragraf apartinand 
+unui topic anume repartizate unui thread dintr-un worker care se ocupa de acel 
+topic;
+		- horror_func, comedy_func, fantasy_func, scifi_func: aceste 
+functii de thread sunt specifice fiecarui WORKER(topic). Avem un thread din 
+worker care se ocupa de primirea paragrafului si trimiterea lor dupa ce au fost 
+procesate iar celelalte thread-uri, cu ID-ul de la 2 la P, prelucreaza 
+paragraful.
+	- master.c contine urmatoarele functii:
+		- send_para: trmite un paragraf catre worker si il primeste 
+inapoi procesat;
+		- read_topic: citeste din fisierul de intrare si trimite 
+paragrafele apartinand unui anumit topic spre procesare pe care le primeste 
+procesate si le adauga in lista topicului respectiv;
+		- master_func: functie executata de fiecare thread pornit din 
+MASTER. Ea apeleaza functia care citeste paragrafele pentru un anumit topic.
+		- write_result: citeste paragrafele din fisierul de intrare 
+pentru a pastra ordinea si scrie varianta lor modificata in fisierul de iesire.
+
+Au fost facute verificari in privinta deschiderii fisierelor si alocarii 
+memoriei si tratate corespunzator, in general, cu macro-ul DIE, dar nu numai. 
+Teoretic, toata memoria alocata de mine a fost dezalocata. Aparent, biblioteca 
+MPI are intern probleme si ramane memorie dezalocata.
